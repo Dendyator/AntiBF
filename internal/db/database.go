@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Dendyator/AntiBF/internal/logger" //nolint
+	"github.com/go-redis/redis/v8"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 )
