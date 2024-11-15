@@ -1,0 +1,90 @@
+basePath: /
+definitions:
+  api.AuthRequest:
+    properties:
+      ip:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+  pb.AuthRequest:
+    properties:
+      ip:
+        type: string
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+  pb.AuthResponse:
+    properties:
+      ok:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API для сервиса, защищающего от брутфорс-атак
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Anti-Bruteforce Service API
+  version: "1.0"
+paths:
+  /auth:
+    post:
+      consumes:
+      - application/json
+      description: Обработка попытки авторизации
+      parameters:
+      - description: Auth data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/api.AuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+      summary: Авторизация
+      tags:
+      - auth
+  /grpc/check:
+    post:
+      consumes:
+      - application/json
+      description: Проверка попытки авторизации через gRPC
+      parameters:
+      - description: Auth data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/pb.AuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pb.AuthResponse'
+      summary: Проверка авторизации
+      tags:
+      - grpc
+swagger: "2.0"
