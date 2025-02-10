@@ -11,7 +11,7 @@ services:
       - "50051:50051"
     environment:
       - CONFIG_PATH=/app/configs/config.yaml
-      - DATABASE_URL=postgres://user:password@db:5432/antibruteforce
+      - DATABASE_URL=postgres://user:password@database:5432/antibruteforce
       - REDIS_URL=redis://redis:6379
     networks:
       - antibruteforce_network
@@ -30,7 +30,7 @@ services:
       POSTGRES_DB: antibruteforce
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ../deployments/db-init:/docker-entrypoint-initdb.d
+      - ../deployments/database-init:/docker-entrypoint-initdb.d
     networks:
       - antibruteforce_network
     healthcheck:

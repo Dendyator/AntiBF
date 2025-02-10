@@ -1,15 +1,23 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"github.com/Dendyator/AntiBF/infrastructure/database"
+	"github.com/Dendyator/AntiBF/infrastructure/infRepositories"
+	"github.com/Dendyator/AntiBF/internal/delivery/grpc"
+	api2 "github.com/Dendyator/AntiBF/internal/delivery/http"
+	"github.com/Dendyator/AntiBF/internal/repositories"
+	"github.com/Dendyator/AntiBF/pkg/config"
+	"github.com/Dendyator/AntiBF/pkg/logger"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/Dendyator/AntiBF/api"             //nolint
-	_ "github.com/Dendyator/AntiBF/docs"          //nolint
-	"github.com/Dendyator/AntiBF/internal/config" //nolint
-	"github.com/Dendyator/AntiBF/internal/core"   //nolint
-	"github.com/Dendyator/AntiBF/internal/db"     //nolint
-	"github.com/Dendyator/AntiBF/internal/logger" //nolint
+	_ "github.com/Dendyator/AntiBF/docs"           //nolint
+	"github.com/Dendyator/AntiBF/internal/usecase" //nolint
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -39,34 +47,61 @@ func main() {
 	cfg := config.LoadConfig(configFile, appLogger)
 	appLogger.Infof("Configuration loaded: %+v", cfg)
 
-	db.InitDB(cfg.Database.DSN, appLogger)
-	defer db.CloseDB()
+	db := database.NewDB(cfg.Database.DSN, cfg.Redis.Address, appLogger)
+	defer db.Close()
 
-	db.InitRedis(cfg.Redis.Address, appLogger)
-	defer db.CloseRedis()
+	api2.InitLogger(appLogger)
 
-	api.InitLogger(appLogger)
-	core.InitLogger(appLogger)
-	core.InitRateLimiter(cfg.RateLimiter)
+	redisRepo := infRepositories.NewRedisRepo(&database.DB{}, appLogger)
+	userRepo := repositories.NewUserRepository(&database.DB{}, appLogger)
+	rateLimiter := usecase.NewRateLimiter(redisRepo, userRepo, cfg.RateLimiter, appLogger)
+
+	ok := rateLimiter.CheckAuthorization("user1", "password123", "192.168.1.1")
+	if ok {
+		appLogger.Info("Authorization successful")
+	} else {
+		appLogger.Warn("Authorization failed")
+	}
+
 	appLogger.Debugf("RateLimiter initialized with limits: LoginLimit=%d, PasswordLimit=%d, IPLimit=%d",
 		cfg.RateLimiter.LoginLimit, cfg.RateLimiter.PasswordLimit, cfg.RateLimiter.IPLimit)
 
 	go func() {
-		api.RunGRPCServer(appLogger)
+		grpc.RunGRPCServer(rateLimiter, appLogger)
 	}()
 
-	http.HandleFunc("/auth", api.HandleAuth)
-	http.HandleFunc("/manage_list", api.HandleManageList)
-	http.HandleFunc("/check_list", api.HandleCheckList)
+	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
+		api2.HandleAuth(rateLimiter).ServeHTTP(w, r)
+	})
+	http.HandleFunc("/manage_list", func(w http.ResponseWriter, r *http.Request) {
+		api2.HandleManageList(rateLimiter).ServeHTTP(w, r)
+	})
+	http.HandleFunc("/check_list", func(w http.ResponseWriter, r *http.Request) {
+		api2.HandleCheckList(rateLimiter).ServeHTTP(w, r)
+	})
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 	http.Handle("/swagger-ui/", http.StripPrefix("/swagger-ui/", http.FileServer(http.Dir("swagger-ui"))))
 
-	appLogger.Info("Starting HTTP server on :8080")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	server := &http.Server{Addr: ":8080"}
 	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		appLogger.Info("Starting HTTP server on :8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			appLogger.Fatalf("Could not start HTTP server: %v", err)
 		}
 	}()
 
-	select {}
+	<-stop
+	appLogger.Info("Получен сигнал остановки. Завершение работы...")
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(timeoutCtx); err != nil {
+		appLogger.Errorf("Ошибка при закрытии сервера: %v", err)
+	}
 }
