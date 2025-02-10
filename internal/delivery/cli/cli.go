@@ -15,23 +15,19 @@ const grpcServerAddress = "localhost:50051"
 
 var appLogger *logger.Logger
 
-func RunCLI(logger *logger.Logger) {
-	appLogger = logger
+var rootCmd = &cobra.Command{
+	Use:   "antibruteforce-cli",
+	Short: "CLI tool for Anti-Bruteforce service",
+}
 
-	var rootCmd = &cobra.Command{
-		Use:   "antibruteforce-cli",
-		Short: "CLI tool for Anti-Bruteforce service",
-	}
-
+func init() {
 	rootCmd.AddCommand(resetBucketCmd)
 	rootCmd.AddCommand(addToWhitelistCmd)
 	rootCmd.AddCommand(removeFromWhitelistCmd)
 	rootCmd.AddCommand(addToBlacklistCmd)
 	rootCmd.AddCommand(removeFromBlacklistCmd)
 
-	if err := rootCmd.Execute(); err != nil {
-		appLogger.Fatalf("CLI execution failed: %v", err)
-	}
+	appLogger = logger.New("info")
 }
 
 var resetBucketCmd = &cobra.Command{

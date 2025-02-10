@@ -23,7 +23,6 @@ type RateLimiter struct {
 	limiter   sync.Map
 }
 
-// Создание нового RateLimiter
 func NewRateLimiter(repo repository.Repository, userRepo repository.UserRepositoryInterface, cfg config.RateLimiterConfig, appLogger *logger.Logger) *RateLimiter {
 	return &RateLimiter{
 		repo:      repo,

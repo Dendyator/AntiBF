@@ -16,14 +16,12 @@ type DB struct {
 	appLogger *logger.Logger
 }
 
-// NewDB создает новый экземпляр DB.
 func NewDB(dsn, redisAddress string, log *logger.Logger) *DB {
 	db := &DB{
 		appLogger: log,
 		ctx:       context.Background(),
 	}
 
-	// Инициализация PostgreSQL
 	sqlDB, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -47,7 +45,6 @@ func NewDB(dsn, redisAddress string, log *logger.Logger) *DB {
 	return db
 }
 
-// Close закрывает соединения с базой данных и Redis.
 func (d *DB) Close() {
 	if d.SQLDB != nil {
 		if err := d.SQLDB.Close(); err != nil {

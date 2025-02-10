@@ -5,7 +5,6 @@ import (
 	"flag"
 	"github.com/Dendyator/AntiBF/infrastructure/database"
 	"github.com/Dendyator/AntiBF/infrastructure/infRepositories"
-	"github.com/Dendyator/AntiBF/internal/delivery/cli"
 	"github.com/Dendyator/AntiBF/internal/delivery/grpc"
 	api2 "github.com/Dendyator/AntiBF/internal/delivery/http"
 	"github.com/Dendyator/AntiBF/internal/repositories"
@@ -71,11 +70,6 @@ func main() {
 		grpc.RunGRPCServer(rateLimiter, appLogger)
 	}()
 
-	go func() {
-		cli.RunCLI(appLogger)
-	}()
-
-	// Регистрация обработчиков HTTP
 	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
 		api2.HandleAuth(rateLimiter).ServeHTTP(w, r)
 	})
@@ -110,6 +104,4 @@ func main() {
 	if err := server.Shutdown(timeoutCtx); err != nil {
 		appLogger.Errorf("Ошибка при закрытии сервера: %v", err)
 	}
-
-	//select {}
 }
