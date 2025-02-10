@@ -44,7 +44,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.AuthRequest"
+                            "$ref": "#/definitions/delivery.AuthRequest"
                         }
                     }
                 ],
@@ -103,7 +103,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.AuthRequest": {
+        "delivery.AuthRequest": {
             "type": "object",
             "properties": {
                 "ip": {
